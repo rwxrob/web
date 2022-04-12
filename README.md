@@ -1,11 +1,13 @@
-# 🌳 Go Bonzai™ Composite Command Tree
+# 🌳 Go Bonzai™ Common Web Requests
 
-*Create a new GitHub project using this template and change this
-README.md to match your project. Make all your template changes before
-making your first commit.*
-
-[![GoDoc](https://godoc.org/github.com/rwxrob/foo?status.svg)](https://godoc.org/github.com/rwxrob/foo)
+[![GoDoc](https://godoc.org/github.com/rwxrob/web?status.svg)](https://godoc.org/github.com/rwxrob/web)
 [![License](https://img.shields.io/badge/license-Apache2-brightgreen.svg)](LICENSE)
+
+This `web` Bonzai branch contains common web requests and strives for
+more command line usability than the raw `net/http` package or even
+`curl` or `w3m`. In particular, the interface design is purposefully
+simple and stateful. The high-level `pkg` can be used separate
+from the `web` composable command.
 
 ## Install
 
@@ -15,7 +17,7 @@ Bonzai command tree.
 Standalone
 
 ```
-go install github.com/rwxrob/foo/foo@latest
+go install github.com/rwxrob/web/web@latest
 ```
 
 Composed
@@ -25,12 +27,12 @@ package z
 
 import (
 	Z "github.com/rwxrob/bonzai/z"
-	"github.com/rwxrob/foo"
+	"github.com/rwxrob/web"
 )
 
 var Cmd = &Z.Cmd{
 	Name:     `z`,
-	Commands: []*Z.Cmd{help.Cmd, foo.Cmd},
+	Commands: []*Z.Cmd{help.Cmd, web.Cmd},
 }
 ```
 
@@ -41,7 +43,7 @@ To activate bash completion just use the `complete -C` option from your
 completion is done by the program itself.
 
 ```
-complete -C foo foo
+complete -C web web
 ```
 
 If you don't have bash or tab completion check use the shortcut
@@ -52,15 +54,3 @@ commands instead.
 All documentation (like manual pages) has been embedded into the source
 code of the application. See the source or run the program with help to
 access it.
-
-## Reminders
-
-* Change `foo` every place to your project name (`git grep foo`)
-* Remove anything you don't need
-* Change `.github/FUNDING.yaml` to your own information
-* Update `.gitignore` to your liking
-* Will need to `go get -u` to update dependencies
-
-## Other Examples
-
-* <https://github.com/rwxrob/z> - the one that started it all
