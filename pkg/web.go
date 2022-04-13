@@ -213,6 +213,8 @@ func (req *Req) Submit() error {
 	}
 
 	switch req.Data.(type) {
+	case map[string]any:
+		return yaml.Unmarshal(resbytes, req.Data)
 	case string:
 		req.Data = string(resbytes)
 	case []byte:
@@ -225,7 +227,7 @@ func (req *Req) Submit() error {
 	case rwxjson.This:
 		log.Println("rwxjson, planned, but unimplemented")
 	default:
-		return json.Unmarshal(resbytes, req.Data)
+		return yaml.Unmarshal(resbytes, req.Data)
 	}
 
 	return nil
