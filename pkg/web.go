@@ -19,16 +19,13 @@ import (
 	"strings"
 	"time"
 
-	rwxjson "github.com/rwxrob/json"
+	rwxjson "github.com/rwxrob/json/pkg"
 	"gopkg.in/yaml.v3"
 )
 
 // TimeOut is a package global timeout for any of the high-level https
 // query functions in this package. The default value is 60 seconds.
 var TimeOut int = 60
-
-// Context is convenient alias to context.Context interface.
-type Context context.Context
 
 // HTTPError is an error for anything other than an HTTP response in the
 // 200-299 range including the 300 redirects (which should be handled by
@@ -58,30 +55,30 @@ func (e ReqSyntaxError) Error() string { return e.Message }
 // when creating mockups and other testing.
 var Client = http.DefaultClient
 
-// Headers contains headers to be added to a Req. Unlike the
-// specification, only one Header of a give name is allowed. For more
+// Head contains headers to be added to a Req. Unlike the
+// specification, only one header of a give name is allowed. For more
 // precision the net/http library directly should be used instead.
-type Headers map[string]string
+type Head map[string]string
 
 // Req is a human-friendly way to think of web requests. This design
 // is closer a pragmatic curl requests than the canonical specification
 // (unique headers, for example). The type and parameters of the web
-// request and response are derived from the Req fields.
+// request and response are derived from the Req fields. The
+// single-letter struct fields are terse but convenient. Use net/http
+// when more precision is required.
 //
-
-//
-// The Body can be one of several types that till trigger what is
+// The body (B) can be one of several types that till trigger what is
 // submitted as data portion of the request:
 //
-//     url.Values - will be www-form-encoded and trigger type
+//     url.Values - triggers x-www-form-urlencoded
 //     byte       - uuencoded binary data
 //     string     - plain text
 //
 // Note that Req has no support for multi-part MIME. Use net/http
 // directly if such is required.
 //
-// The Data field can also be any of several types that trigger how the
-// received data is handled:
+// The data (D) field can also be any of several types that trigger how
+// the received data is handled:
 //
 //     []byte           - uudecoded binary
 //     string           - plain text string
@@ -96,55 +93,48 @@ type Headers map[string]string
 // string serves as a reminder that all query strings should be URL
 // encoded (as is often forgotten).
 type Req struct {
-	Method  string     // GET, POST, (default GET)
-	URL     string     // base url, never any query string
-	Query   url.Values // query string to append to URL
-	Headers Headers    // never more than one of same
-	Body    any        // body data, if url.Values will JSON encode
-	Data    any        // where to put the response data
-	Context Context    // trigger requests with context
-	Resp    any        // usually http.Response
+	U string          // base url, optional query string
+	D any             // data to be populated and/or overwritten
+	M string          // all caps method (default: GET)
+	Q url.Values      // query string to append to URL (if none already)
+	H Head            // header map, never more than one of same
+	B any             // body data, url.Values will x-www-form-urlencoded
+	C context.Context // trigger requests with context
+	R *http.Response  // actual http.Response
 }
 
 // Submit synchronously sends the Req to server and populates the
-// response from the server into Data. Anything but a response in the
+// response from the server into D. Anything but a response in the
 // 200s will result in an HTTPError. See Req for details on how
 // inspection of Req will change the behavior of Submit
-// automatically. It Req.Context is nil a context.WithTimeout will
+// automatically. It Req.C is nil a context.WithTimeout will
 // be used and with the value of web.TimeOut.
-//
-// For convenience, will produce a ReqSyntaxError for any of the
-// following conditions:
-//
-//     * URL contains '?' (use Query instead)
-//     * Unsupported Body type
-//     * Unsupported Data type
-//
 func (req *Req) Submit() error {
 
-	if req.Method == "" {
-		req.Method = `GET`
+	if req.M == "" {
+		req.M = `GET`
+	}
+	req.M = strings.ToUpper(req.M)
+
+	if strings.Index(req.U, "?") == 0 && req.Q != nil {
+		req.U = req.U + "?" + req.Q.Encode()
 	}
 
-	if strings.Index(req.URL, "?") >= 0 {
-		return ReqSyntaxError{`URL contains '?' (use Query instead)`}
-	}
-	req.URL = req.URL + "?" + req.Query.Encode()
 	var bodyReader io.Reader
 
-	if req.Headers == nil {
-		req.Headers = Headers{}
+	if req.H == nil {
+		req.H = Head{}
 	}
 
 	var buf string
 
-	switch v := req.Body.(type) {
+	switch v := req.B.(type) {
 	case url.Values:
 		buf = v.Encode()
-		req.Headers["Content-Type"] = "application/x-www-form-urlencoded"
+		req.H["Content-Type"] = "application/x-www-form-urlencoded"
 	case []byte:
 		log.Println("planned, but unimplemented, would uuencode")
-		//req.Headers["Content-Length"] = strconv.Itoa(len(uuencoded))
+		//req.H["Content-Length"] = strconv.Itoa(len(uuencoded))
 	case string:
 		buf = v
 	case yaml.Marshaler:
@@ -172,20 +162,20 @@ func (req *Req) Submit() error {
 	}
 
 	bodyReader = strings.NewReader(buf)
-	req.Headers["Content-Length"] = strconv.Itoa(len(buf))
+	req.H["Content-Length"] = strconv.Itoa(len(buf))
 
-	httpreq, err := http.NewRequest(req.Method, req.URL, bodyReader)
+	httpreq, err := http.NewRequest(req.M, req.U, bodyReader)
 	if err != nil {
 		return err
 	}
 
-	if req.Headers != nil {
-		for k, v := range req.Headers {
+	if req.H != nil {
+		for k, v := range req.H {
 			httpreq.Header.Add(k, v)
 		}
 	}
 
-	if req.Context == nil {
+	if req.C == nil {
 		dur := time.Duration(time.Second * time.Duration(TimeOut))
 		ctx, cancel := context.WithTimeout(context.Background(), dur)
 		defer cancel()
@@ -193,7 +183,7 @@ func (req *Req) Submit() error {
 	}
 
 	res, err := Client.Do(httpreq)
-	req.Resp = res
+	req.R = res
 
 	if err != nil {
 		return err
@@ -212,22 +202,22 @@ func (req *Req) Submit() error {
 		return nil
 	}
 
-	switch req.Data.(type) {
+	switch req.D.(type) {
 	case map[string]any:
-		return yaml.Unmarshal(resbytes, req.Data)
+		return yaml.Unmarshal(resbytes, req.D)
 	case string:
-		req.Data = string(resbytes)
+		req.D = string(resbytes)
 	case []byte:
 		log.Println("planned, but unimplemented, would uuencode")
 		// v = uudecode(resbytes)
 	case yaml.Unmarshaler:
-		return yaml.Unmarshal(resbytes, req.Data)
+		return yaml.Unmarshal(resbytes, req.D)
 	case io.Writer:
 		return nil
 	case rwxjson.This:
 		log.Println("rwxjson, planned, but unimplemented")
 	default:
-		return yaml.Unmarshal(resbytes, req.Data)
+		return yaml.Unmarshal(resbytes, req.D)
 	}
 
 	return nil

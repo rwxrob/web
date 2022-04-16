@@ -19,7 +19,7 @@ var Cmd = &Z.Cmd{
 
 	Name:      `web`,
 	Summary:   `common web requests`,
-	Version:   `v0.2.0`,
+	Version:   `v0.3.0`,
 	Copyright: `Copyright 2021 Robert S Muhlestein`,
 	License:   `Apache-2.0`,
 	Source:    `git@github.com:rwxrob/web.git`,
@@ -42,16 +42,16 @@ var Cmd = &Z.Cmd{
 var get = &Z.Cmd{
 
 	Name:    `get`,
-	Summary: `get source of a web address`,
+	Summary: `submit http get request`,
 	MinArgs: 1,
-	//MaxArgs: 2,
+	MaxArgs: 2,
 
 	Call: func(_ *Z.Cmd, args ...string) error {
-		req := web.Req{URL: args[0], Data: ""}
+		req := web.Req{U: args[0], D: ""}
 		if err := req.Submit(); err != nil {
 			return err
 		}
-		fmt.Println(req.Data)
+		fmt.Println(req.D)
 		return nil
 	},
 }
