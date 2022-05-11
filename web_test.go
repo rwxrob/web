@@ -5,7 +5,7 @@ import (
 	"net/http"
 	ht "net/http/httptest"
 
-	web "github.com/rwxrob/web/pkg"
+	web "github.com/rwxrob/web"
 )
 
 func ExampleFetch_get() {
