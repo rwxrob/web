@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	rwxjson "github.com/rwxrob/json/pkg"
+	rwxjson "github.com/rwxrob/json"
 	"gopkg.in/yaml.v3"
 )
 
